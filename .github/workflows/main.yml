@@ -1,5 +1,5 @@
 # Nombre del workflow que aparecerá en la pestaña "Actions" de GitHub
-name: Verificación de HelloWorld
+name: Verificación de Laboratorio 1
 
 on:
   # Se activa en cada push al repositorio
@@ -25,8 +25,8 @@ jobs:
 
       # Paso 3: Dar permisos de ejecución al script de validación
       - name: Dando permisos de ejecución al script
-        run: chmod +x ./.github/scripts/validate_helloworld.sh
+        run: chmod +x ./.github/scripts/validate.sh
 
-      # Paso 4: Ejecutar el script que valida el HelloWorld
-      - name: Validando el programa HelloWorld
-        run: ./.github/scripts/validate_helloworld.sh
+      # Paso 4: Ejecutar el script que valida el programa
+      - name: Validando el programa
+        run: ./.github/scripts/validate.sh

@@ -1,6 +1,6 @@
-package org.laboratorio1.controller;
+package org.laboratorio1;
 
-public class HelloWorld {
+public class Main {
     public static void main(String[] args) {
 
         System.out.println("Hello world!");
