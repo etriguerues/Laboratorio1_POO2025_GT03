@@ -102,7 +102,7 @@ echo -e "${GREEN}Entorno de pruebas creado.${NC}"
 # --- PASO 3: COMPILAR TODO EL PROYECTO ---
 echo "✅ PASO 3: Compilando todo el código fuente..."
 mkdir -p bin
-COMPILE_OUTPUT=$(javac -d bin $(find . -name "*.java") 2>&1)
+COMPILE_OUTPUT=$(javac -encoding UTF-8 -d bin $(find . -name "*.java") 2>&1)
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ ERROR DE COMPILACIÓN. Revisa tu código.${NC}"
     echo "$COMPILE_OUTPUT"
