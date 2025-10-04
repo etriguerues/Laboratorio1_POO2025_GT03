@@ -1,128 +1,135 @@
 #!/bin/bash
+export LANG=C.UTF-8
 
 # Colores para la salida en consola
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0;0m' # Sin color
 
-echo "-------------------------------------------"
-echo "🚀 Iniciando validación de Laboratorio Gestor de Tareas..."
-echo "-------------------------------------------"
+echo "--------------------------------------------------------"
+echo "Iniciando validacion de Laboratorio de Gestor de Tareas..."
+echo "--------------------------------------------------------"
 
-# --- PASO 1: VERIFICAR LA ESTRUCTURA DE ARCHIVOS REQUERIDA ---
-echo "✅ PASO 1: Verificando estructura de archivos..."
-BASE_PATH="src/main/java/org/laboratorio1"
-TAREA_FILE="$BASE_PATH/model/Tarea.java"
-SERVICIO_FILE="$BASE_PATH/service/GestorTareas.java"
-MAIN_FILE="$BASE_PATH/controller/Main.java"
+# Variable de control de errores
+FAILED=0
+# BASE_PATH para Laboratorio 2
+BASE_PATH="src/main/java/org/laboratorio2"
 
-if [ ! -f "$TAREA_FILE" ] || [ ! -f "$SERVICIO_FILE" ] || [ ! -f "$MAIN_FILE" ]; then
-    echo -e "${RED}❌ ERROR: Estructura de archivos incorrecta.${NC}"
-    echo "Asegúrate de que existan los siguientes archivos en sus paquetes correctos:"
-    [ ! -f "$TAREA_FILE" ] && echo "  - Falta: $TAREA_FILE"
-    [ ! -f "$SERVICIO_FILE" ] && echo "  - Falta: $SERVICIO_FILE"
-    [ ! -f "$MAIN_FILE" ] && echo "  - Falta: $MAIN_FILE"
+# --- PASO 1: VERIFICAR NOMBRES DE PAQUETES Y CLASES REQUERIDAS ---
+echo -e "\n${YELLOW}PASO 1: Verificando la estructura completa de paquetes y clases...${NC}"
+
+# Define aqui todos los paquetes (directorios) y clases (archivos) que son obligatorios.
+REQUIRED_PATHS=(
+    "$BASE_PATH/model"
+    "$BASE_PATH/service"
+    "$BASE_PATH/controller"
+    "$BASE_PATH/model/Tarea.java"
+    "$BASE_PATH/model/TareaSimple.java"
+    "$BASE_PATH/model/TareaConFechaLimite.java"
+    "$BASE_PATH/service/IAccionAlCompletar.java"
+    "$BASE_PATH/service/NotificarEmail.java"
+    "$BASE_PATH/service/ArchivarTarea.java"
+    "$BASE_PATH/service/GestorTareas.java"
+    "$BASE_PATH/controller/Main.java"
+)
+
+STRUCTURE_OK=true
+for path in "${REQUIRED_PATHS[@]}"; do
+    if [[ "$path" != *.java && ! -d "$path" ]]; then
+        echo -e "${RED}Paquete Requerido NO ENCONTRADO: $path${NC}"
+        FAILED=1
+        STRUCTURE_OK=false
+    elif [[ "$path" == *.java && ! -f "$path" ]]; then
+        echo -e "${RED}Clase Requerida NO ENCONTRADA: $path${NC}"
+        FAILED=1
+        STRUCTURE_OK=false
+    fi
+done
+
+if [ "$STRUCTURE_OK" = true ]; then
+    echo -e "${GREEN}La estructura de paquetes y clases es correcta.${NC}"
+fi
+
+# --- PASO 2: VERIFICAR USO DE CONCEPTOS Y METODOS OOP ---
+echo -e "\n${YELLOW}PASO 2: Verificando el diseno de clases y metodos de OOP...${NC}"
+if [ ! -d "$BASE_PATH" ]; then
+    echo -e "${RED}No se puede continuar porque el directorio base '$BASE_PATH' no existe.${NC}"
     exit 1
 fi
-echo -e "${GREEN}Estructura de archivos correcta.${NC}"
+ALL_FILES=$(find "$BASE_PATH" -name "*.java")
 
+# 2.1 Verificacion de Relaciones Especificas (Herencia e Implementacion)
+REQUIRED_RELATIONSHIPS=(
+    "TareaSimple.*extends.*Tarea"
+    "TareaConFechaLimite.*extends.*Tarea"
+    "NotificarEmail.*implements.*IAccionAlCompletar"
+    "ArchivarTarea.*implements.*IAccionAlCompletar"
+)
 
-# --- PASO 2: CREAR EL TEST RUNNER PARA VALIDAR LA LÓGICA ---
-echo "✅ PASO 2: Creando el entorno de pruebas..."
-cat <<EOF > TestRunner.java
-import org.laboratorio1.model.Tarea;
-import org.laboratorio1.service.GestorTareas;
-import java.util.List;
+RELATIONSHIPS_OK=true
+for pattern in "${REQUIRED_RELATIONSHIPS[@]}"; do
+    # Usamos una expresion regular para ser flexibles con espacios y palabras como 'public'
+    if ! grep -q -E "$pattern" $ALL_FILES; then
+        # Mostramos un mensaje de error mas legible para el estudiante
+        readable_pattern=$(echo "$pattern" | sed 's/\.\*/ /g')
+        echo -e "${RED}REQUISITO FALLIDO: No se encontro la relacion esperada: '$readable_pattern'.${NC}"
+        FAILED=1
+        RELATIONSHIPS_OK=false
+    fi
+done
 
-public class TestRunner {
-    public static void main(String[] args) {
-        boolean allTestsPassed = true;
+if [ "$RELATIONSHIPS_OK" = true ]; then
+    echo -e "${GREEN}Todas las relaciones de herencia e implementacion son correctas.${NC}"
+fi
 
-        // Prueba 1: Verificar la clase Tarea (constructor, getters, estado inicial)
-        try {
-            Tarea tarea = new Tarea(1, "Comprar pan");
-            if (tarea.getId() != 1 || !tarea.getDescripcion().equals("Comprar pan") || tarea.isCompletada()) {
-                System.out.println("❌ TEST 1 FALLIDO: La clase Tarea no se inicializa correctamente (constructor, getters o estado 'completada').");
-                allTestsPassed = false;
-            } else {
-                System.out.println("✔️ TEST 1 APROBADO: La clase Tarea se instancia correctamente.");
-            }
-        } catch (Exception e) {
-            System.out.println("❌ TEST 1 FALLIDO: Error crítico al usar la clase Tarea. " + e.getMessage());
-            allTestsPassed = false;
-        }
+# 2.2 Verificacion de palabras clave y metodos
+echo "" # Linea en blanco para separar visualmente
+if ! grep -q "abstract" $ALL_FILES; then
+    echo -e "${RED}REQUISITO FALLIDO: No se encontro uso de 'abstract'.${NC}"; FAILED=1; else echo -e "${GREEN}Uso de 'abstract' detectado.${NC}"; fi
+if ! grep -q "@Override" $ALL_FILES; then
+    echo -e "${RED}REQUISITO FALLIDO: No se encontro uso de '@Override'.${NC}"; FAILED=1; else echo -e "${GREEN}Uso de '@Override' detectado.${NC}"; fi
 
-        // Prueba 2: Verificar GestorTareas.agregarTarea()
-        try {
-            GestorTareas gestor = new GestorTareas();
-            gestor.agregarTarea("Lavar ropa");
-            gestor.agregarTarea("Pasear al perro");
-            List<Tarea> pendientes = gestor.obtenerTareasPendientes();
-            if (pendientes.size() != 2 || !pendientes.get(0).getDescripcion().equals("Lavar ropa")) {
-                 System.out.println("❌ TEST 2 FALLIDO: El método agregarTarea() o el ID automático no funcionan como se esperaba.");
-                allTestsPassed = false;
-            } else {
-                System.out.println("✔️ TEST 2 APROBADO: El método agregarTarea() funciona.");
-            }
-        } catch (Exception e) {
-            System.out.println("❌ TEST 2 FALLIDO: Error en agregarTarea() u obtenerTareasPendientes(). " + e.getMessage());
-            allTestsPassed = false;
-        }
+REQUIRED_METHODS=(
+    "mostrarDetalles"
+    "ejecutar"
+    "marcarTareaComoCompletada"
+)
 
-        // Prueba 3: Verificar marcarTareaComoCompletada() y obtenerTareasPendientes()
-        try {
-            GestorTareas gestor = new GestorTareas();
-            gestor.agregarTarea("Tarea A"); // id=1
-            gestor.agregarTarea("Tarea B"); // id=2
-            gestor.agregarTarea("Tarea C"); // id=3
+METHODS_OK=true
+for method in "${REQUIRED_METHODS[@]}"; do
+    if ! grep -q "$method(" $ALL_FILES; then
+        echo -e "${RED}REQUISITO FALLIDO: No se encontro el metodo requerido: '$method()'.${NC}"
+        FAILED=1
+        METHODS_OK=false
+    fi
+done
 
-            gestor.marcarTareaComoCompletada(2); // Completar Tarea B
-
-            List<Tarea> pendientes = gestor.obtenerTareasPendientes();
-
-            if (pendientes.size() != 2 || pendientes.get(0).getId() != 1 || pendientes.get(1).getId() != 3) {
-                System.out.println("❌ TEST 3 FALLIDO: marcarTareaComoCompletada() u obtenerTareasPendientes() no filtran correctamente.");
-                allTestsPassed = false;
-            } else {
-                System.out.println("✔️ TEST 3 APROBADO: Marcar como completada y obtener pendientes funciona.");
-            }
-        } catch (Exception e) {
-            System.out.println("❌ TEST 3 FALLIDO: Error al marcar una tarea o filtrar pendientes. " + e.getMessage());
-            allTestsPassed = false;
-        }
-
-        if (!allTestsPassed) {
-            System.exit(1);
-        }
-    }
-}
-EOF
-echo -e "${GREEN}Entorno de pruebas creado.${NC}"
+if [ "$METHODS_OK" = true ]; then
+    echo -e "${GREEN}Todos los metodos requeridos fueron encontrados.${NC}"
+fi
 
 # --- PASO 3: COMPILAR TODO EL PROYECTO ---
-echo "✅ PASO 3: Compilando todo el código fuente..."
+echo -e "\n${YELLOW}PASO 3: Compilando todo el codigo fuente...${NC}"
 mkdir -p bin
-COMPILE_OUTPUT=$(javac -encoding UTF-8 -d bin $(find . -name "*.java") 2>&1)
+COMPILE_OUTPUT=$(javac -encoding UTF-8 -cp src/main/java -d bin $(find src/main/java -name "*.java") 2>&1)
+
 if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ ERROR DE COMPILACIÓN. Revisa tu código.${NC}"
+    echo -e "${RED}ERROR DE COMPILACION. Revisa tu codigo:${NC}"
     echo "$COMPILE_OUTPUT"
-    exit 1
+    FAILED=1
+else
+    echo -e "${GREEN}Compilacion exitosa.${NC}"
 fi
-echo -e "${GREEN}Compilación exitosa.${NC}"
 
-# --- PASO 4: EJECUTAR LAS PRUEBAS ---
-echo "✅ PASO 4: Ejecutando pruebas de lógica..."
-java -cp bin TestRunner
-TEST_RESULT=$?
-
-# --- PASO 5: MOSTRAR RESULTADO FINAL ---
-echo "-------------------------------------------"
-if [ $TEST_RESULT -eq 0 ]; then
-    echo -e "${GREEN}✅ Verificación completada. Todos los tests pasaron exitosamente.${NC}"
-    echo "Tu entrega ha sido recibida y procesada."
+# --- PASO 4: MOSTRAR RESULTADO FINAL ---
+echo -e "\n--------------------------------------------------------"
+if [ $FAILED -eq 0 ]; then
+    echo -e "${GREEN}Verificacion completada exitosamente.${NC}"
+    echo "El codigo cumple con todos los requisitos de estructura, OOP y compilacion."
     exit 0
 else
-    echo -e "${RED}❌ Se encontraron errores durante la validación.${NC}"
-    echo "Revisa los detalles de los tests en la salida anterior para identificar las inconsistencias."
+    echo -e "${RED}Se encontraron errores durante la validacion.${NC}"
+    echo "Revisa los mensajes anteriores para corregir tu entrega."
     exit 1
 fi
