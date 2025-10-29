@@ -75,7 +75,6 @@ REQUIRED_ANNOTATIONS=(
     "@RequestMapping"
     "@PostMapping"
     "@RequestBody"
-    "@ResponseStatus"
     "@GetMapping"
     "@PathVariable"
     "@RequestParam"
