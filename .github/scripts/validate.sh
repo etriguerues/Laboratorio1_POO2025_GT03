@@ -1,180 +1,147 @@
 #!/bin/bash
 export LANG=C.UTF-8
 
-# Colores para la salida en consola
+# Colores
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0;0m' # Sin color
+NC='\033[0;0m'
 
 echo "--------------------------------------------------------"
-echo "Iniciando validacion de Laboratorio - G3 (Gestor Tareas API)..."
+echo "Iniciando validación Lab 4: Bóveda Bancaria (Prioridades & Binary)"
 echo "--------------------------------------------------------"
 
-# Variable de control de errores
 FAILED=0
-# RUTA BASE (Ajusta 'com/poo/lab3' si tu paquete es diferente)
-BASE_PATH="src/main/java/com/poo/lab3"
 
-# --- PASO 1: VERIFICAR ESTRUCTURA DE PAQUETES Y ARCHIVOS REQUERIDOS ---
-echo -e "\n${YELLOW}PASO 1: Verificando la estructura de archivos de la API...${NC}"
+# --- CONFIGURACIÓN DE RUTA ---
+# Ajusta esto según el paquete del estudiante
+# Ejemplo: "src/main/java/com/poo/lab4"
+BASE_PATH="src/main/java/com/poo/lab4"
 
-# Se valida la existencia de las clases clave
+echo -e "Buscando código fuente en: $BASE_PATH"
+
+# --- PASO 1: VERIFICAR ESTRUCTURA DE PAQUETES (core, workers, app) ---
+echo -e "\n${YELLOW}PASO 1: Verificando estructura de paquetes...${NC}"
+
 REQUIRED_PATHS=(
-    "$BASE_PATH/model"
-    "$BASE_PATH/service"
-    "$BASE_PATH/controller"
-    "$BASE_PATH/dto"
-    "$BASE_PATH/model/TipoTarea.java"
-    "$BASE_PATH/model/Tarea.java"
-    "$BASE_PATH/dto/TareaRequest.java"
-    "$BASE_PATH/dto/TareaResponse.java"
-    "$BASE_PATH/dto/CompletarTareaResponse.java"
-    "$BASE_PATH/service/IAccionAlCompletar.java"
-    "$BASE_PATH/service/NotificarEmail.java"
-    "$BASE_PATH/service/ArchivarTarea.java"
-    "$BASE_PATH/service/TareaService.java"
-    "$BASE_PATH/controller/TareaController.java"
+    "$BASE_PATH/core"
+    "$BASE_PATH/workers"
+    "$BASE_PATH/app"
+    "$BASE_PATH/core/CuentaBancaria.java"
+    "$BASE_PATH/workers/CajeroRunnable.java"
+    "$BASE_PATH/app/MainBanco.java"
 )
 
 STRUCTURE_OK=true
 for path in "${REQUIRED_PATHS[@]}"; do
-    # Validacion para directorios
     if [[ "$path" != *.java && ! -d "$path" ]]; then
-        echo -e "${RED}Paquete Requerido NO ENCONTRADO: $path${NC}"
+        echo -e "${RED}[FALTA RUTA] No encontrada: $path${NC}"
         FAILED=1
         STRUCTURE_OK=false
-    # Validacion para archivos
     elif [[ "$path" == *.java && ! -f "$path" ]]; then
-        echo -e "${RED}Clase o Interfaz Requerida NO ENCONTRADA: $path${NC}"
+        echo -e "${RED}[FALTA ARCHIVO] No encontrado: $path${NC}"
         FAILED=1
         STRUCTURE_OK=false
     fi
 done
 
 if [ "$STRUCTURE_OK" = true ]; then
-    echo -e "${GREEN}La estructura de paquetes y clases es correcta.${NC}"
+    echo -e "${GREEN}Estructura de paquetes correcta (core/workers/app).${NC}"
 fi
 
+# --- PASO 2: VERIFICAR REQUISITOS DE CONCURRENCIA (PRIORIDADES) ---
+echo -e "\n${YELLOW}PASO 2: Verificando lógica de Hilos y Prioridades...${NC}"
 
-# --- PASO 2: VERIFICAR USO DE ANOTACIONES Y MÉTODOS REQUERIDOS ---
-echo -e "\n${YELLOW}PASO 2: Verificando el diseno de clases y metodos (Spring & Lombok)...${NC}"
 if [ ! -d "$BASE_PATH" ]; then
-    echo -e "${RED}No se puede continuar porque el directorio base '$BASE_PATH' no existe.${NC}"
+    echo -e "${RED}Directorio base no encontrado. Abortando.${NC}"
     exit 1
 fi
-ALL_FILES=$(find "$BASE_PATH" -name "*.java")
 
-# 2.1 Verificacion de anotaciones clave de Spring y Lombok
-REQUIRED_ANNOTATIONS=(
-    "@Data"
-    "@NoArgsConstructor"
-    "@AllArgsConstructor"
-    "@Service"
-    "@RestController"
-    "@RequestMapping"
-    "@PostMapping"
-    "@RequestBody"
-    "@GetMapping"
-    "@PathVariable"
-    "@RequestParam"
-    "@PatchMapping"
-)
+MAIN_FILE="$BASE_PATH/app/MainBanco.java"
 
-ANNOTATIONS_OK=true
-for annotation in "${REQUIRED_ANNOTATIONS[@]}"; do
-    if ! grep -q -R "$annotation" "$BASE_PATH"; then
-        echo -e "${RED}REQUISITO FALLIDO: No se encontro uso de la anotacion: '$annotation'.${NC}"
+# 2.1 Validar Uso Manual de Hilos (No Executors aquí)
+if [ -f "$MAIN_FILE" ]; then
+    if ! grep -q "new Thread" "$MAIN_FILE"; then
+        echo -e "${RED}[ERROR] MainBanco: No se encontró 'new Thread(...)'. En este lab se requiere creación manual de hilos.${NC}"
         FAILED=1
-        ANNOTATIONS_OK=false
     fi
-done
 
-if [ "$ANNOTATIONS_OK" = true ]; then
-    echo -e "${GREEN}Uso de anotaciones clave (@RestController, @Service, @Data...) detectado.${NC}"
+    # 2.2 Validar Prioridades (El objetivo principal del lab)
+    if ! grep -q "setPriority" "$MAIN_FILE"; then
+        echo -e "${RED}[ERROR CRÍTICO] MainBanco: No se está usando 'setPriority'.${NC}"
+        FAILED=1
+    fi
+
+    if ! grep -q "MAX_PRIORITY" "$MAIN_FILE" || ! grep -q "MIN_PRIORITY" "$MAIN_FILE"; then
+        echo -e "${RED}[ERROR] MainBanco: Debes usar las constantes Thread.MAX_PRIORITY y Thread.MIN_PRIORITY.${NC}"
+        FAILED=1
+    fi
+
+    # 2.3 Validar Join (Sincronización de flujo)
+    if ! grep -q ".join()" "$MAIN_FILE"; then
+        echo -e "${RED}[ERROR] MainBanco: No se encontró '.join()'. El main debe esperar a los hilos antes de guardar el balance.${NC}"
+        FAILED=1
+    fi
 fi
 
-# 2.2 Verificacion de metodos clave
-echo "" # Linea en blanco
-REQUIRED_METHODS=(
-    "crearTarea"
-    "getTareasPendientes"
-    "marcarTareaComoCompletada"
-    "ejecutar"
-    "getTipoAccion"
-)
-
-METHODS_OK=true
-for method in "${REQUIRED_METHODS[@]}"; do
-    if ! grep -q "$method(" $ALL_FILES; then
-        echo -e "${RED}REQUISITO FALLIDO: No se encontro el metodo requerido: '$method()'.${NC}"
+# 2.4 Validar Sincronización de la Cuenta
+CUENTA_FILE="$BASE_PATH/core/CuentaBancaria.java"
+if [ -f "$CUENTA_FILE" ]; then
+    if ! grep -q "synchronized" "$CUENTA_FILE"; then
+        echo -e "${RED}[ERROR] CuentaBancaria: Los métodos de transacción deben ser 'synchronized'.${NC}"
         FAILED=1
-        METHODS_OK=false
     fi
-done
-
-if [ "$METHODS_OK" = true ]; then
-    echo -e "${GREEN}Todos los metodos requeridos fueron encontrados.${NC}"
 fi
 
-# --- PASO 3: VERIFICAR ENDPOINTS EN EL CONTROLADOR ---
-echo -e "\n${YELLOW}PASO 3: Verificando los Endpoints REST en el Controlador...${NC}"
-CONTROLLER_FILE="$BASE_PATH/controller/TareaController.java"
+if [ $FAILED -eq 0 ]; then
+    echo -e "${GREEN}Lógica de Hilos (Manuales, Prioridades, Join, Sync) correcta.${NC}"
+fi
 
-if [ ! -f "$CONTROLLER_FILE" ]; then
-    echo -e "${RED}No se puede verificar endpoints, el controlador no existe en: $CONTROLLER_FILE${NC}"
+# --- PASO 3: VERIFICAR PERSISTENCIA BINARIA (DATA STREAMS) ---
+echo -e "\n${YELLOW}PASO 3: Verificando escritura binaria primitiva...${NC}"
+
+# Buscamos el uso de DataOutputStream en Main o donde hayan puesto la lógica
+ALL_JAVA_FILES=$(find "$BASE_PATH" -name "*.java")
+BINARY_OK=true
+
+if ! grep -q "DataOutputStream" $ALL_JAVA_FILES; then
+    echo -e "${RED}[ERROR] Persistencia: No se encontró 'DataOutputStream'. Se requiere escritura binaria primitiva.${NC}"
     FAILED=1
-else
-    ENDPOINTS_OK=true
-    # Endpoint 1: POST /api/tareas (Rubrica dice @PostMapping sin path)
-    if ! grep -q -E '@PostMapping' "$CONTROLLER_FILE"; then
-        echo -e "${RED}ENDPOINT FALLIDO: No se encontro el @PostMapping en $CONTROLLER_FILE.${NC}"
-        FAILED=1
-        ENDPOINTS_OK=false
-    fi
-
-    # Endpoint 2: GET /api/tareas/pendientes
-    if ! grep -q -E '@GetMapping.*"/pendientes"' "$CONTROLLER_FILE"; then
-        echo -e "${RED}ENDPOINT FALLIDO: No se encontro el GET a '/pendientes' en $CONTROLLER_FILE.${NC}"
-        FAILED=1
-        ENDPOINTS_OK=false
-    fi
-
-    # Endpoint 3: PATCH /api/tareas/{id}/completar
-    if ! grep -q -E '@PatchMapping.*"/{id}/completar"' "$CONTROLLER_FILE"; then
-        echo -e "${RED}ENDPOINT FALLIDO: No se encontro el PATCH a '/{id}/completar' en $CONTROLLER_FILE.${NC}"
-        FAILED=1
-        ENDPOINTS_OK=false
-    fi
-
-    if [ "$ENDPOINTS_OK" = true ]; then
-        echo -e "${GREEN}Todos los Endpoints y parametros requeridos fueron encontrados.${NC}"
-    fi
+    BINARY_OK=false
 fi
 
-# --- PASO 4: COMPILAR TODO EL PROYECTO (MAVEN) ---
-echo -e "\n${YELLOW}PASO 4: Compilando el proyecto con Maven...${NC}"
+if ! grep -q "writeDouble" $ALL_JAVA_FILES; then
+    echo -e "${RED}[ERROR] Persistencia: No se encontró 'writeDouble'. El saldo debe guardarse como primitivo.${NC}"
+    FAILED=1
+    BINARY_OK=false
+fi
 
-# Redirigimos la salida normal a /dev/null para solo mostrar errores
+if [ "$BINARY_OK" = true ]; then
+    echo -e "${GREEN}Uso de DataOutputStream y primitivos detectado.${NC}"
+fi
+
+# --- PASO 4: COMPILAR ---
+echo -e "\n${YELLOW}PASO 4: Compilando...${NC}"
+
 COMPILE_OUTPUT=$(mvn clean package -DskipTests 2>&1)
+MVN_EXIT_CODE=$?
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}ERROR DE COMPILACION (MAVEN). Revisa tu codigo o pom.xml:${NC}"
-    # Mostramos solo las ultimas 15 lineas del error para no saturar
-    echo "$COMPILE_OUTPUT" | tail -n 15
+if [ $MVN_EXIT_CODE -ne 0 ]; then
+    echo -e "${RED}ERROR DE COMPILACIÓN.${NC}"
+    echo "$COMPILE_OUTPUT" | grep -E "ERROR|FAILURE" -A 2 | head -n 10
     FAILED=1
 else
-    echo -e "${GREEN}Compilacion con Maven exitosa.${NC}"
+    echo -e "${GREEN}Compilación exitosa.${NC}"
 fi
 
-# --- PASO 5: MOSTRAR RESULTADO FINAL ---
+# --- RESULTADO ---
 echo -e "\n--------------------------------------------------------"
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}Verificacion completada exitosamente.${NC}"
-    echo "El codigo cumple con todos los requisitos de estructura, diseno API y compilacion."
+    echo -e "${GREEN}✔ LABORATORIO APROBADO${NC}"
+    echo "Excelente manejo de prioridades de hilos y archivos binarios."
     exit 0
 else
-    echo -e "${RED}Se encontraron errores durante la validacion.${NC}"
-    echo "Revisa los mensajes anteriores para corregir tu entrega."
+    echo -e "${RED}✘ SE ENCONTRARON ERRORES${NC}"
+    echo "Revisa los requisitos de prioridades y DataOutputStream."
     exit 1
 fi

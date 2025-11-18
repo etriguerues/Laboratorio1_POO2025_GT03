@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.poo</groupId>
-	<artifactId>lab3</artifactId>
+	<artifactId>lab4</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lab3</name>
+	<name>lab4</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
 	<licenses>
@@ -45,6 +45,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
 	</dependencies>
 
 	<build>
